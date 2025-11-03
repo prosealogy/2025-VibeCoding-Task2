@@ -168,12 +168,28 @@ function output({ results, score, note }) {
 
 async function postPRComment({ results, score, note }) {
   // 只在 PR 事件時留言
-  if (process.env.GITHUB_EVENT_NAME !== 'pull_request' && process.env.GITHUB_EVENT_NAME !== 'pull_request_target') {
+  const eventName = process.env.GITHUB_EVENT_NAME;
+  if (eventName !== 'pull_request' && eventName !== 'pull_request_target') {
     console.log('ℹ️  非 PR 環境，跳過留言');
     return;
   }
 
-  const prNumber = process.env.GITHUB_REF?.match(/refs\/pull\/(\d+)\//)?.[1];
+  // 從事件檔案讀取 PR 編號
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath) {
+    console.log('⚠️  無法取得事件檔案路徑，跳過留言');
+    return;
+  }
+
+  let prNumber;
+  try {
+    const event = JSON.parse(fs.readFileSync(eventPath, 'utf8'));
+    prNumber = event.pull_request?.number;
+  } catch (err) {
+    console.log('⚠️  讀取事件檔案失敗:', err.message);
+    return;
+  }
+
   if (!prNumber) {
     console.log('⚠️  無法取得 PR 編號，跳過留言');
     return;
